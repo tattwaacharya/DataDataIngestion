@@ -9,6 +9,7 @@ from flask import Flask, render_template
 import json
 import pandas as pd
 from simple_salesforce import Salesforce,SalesforceLogin,SFType
+import snowflake_connect
 import os
 
 
@@ -74,9 +75,10 @@ def page2():
 def page3():
     
     print("Inside page3")
-     
-    exec(open("snowflake_connect.py").read())
-    
+    data = session.get('data', None)
+    sf = snowflake_connect.snowflakeLoader
+    #exec(open("snowflake_connect.py").read())
+    sf(data).loader()
     return render_template('page3.html')
 
 

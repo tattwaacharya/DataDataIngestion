@@ -53,22 +53,26 @@ class SalesforceSrc:
             md = pd.DataFrame(SFType(each, self.sf.session_id, self.sf.sf_instance, self.sf.sf_version,
                                      self.sf.proxies).describe().get('fields'))
             #md.to_csv('metadata.csv')
+            #md.drop('attributes', axis = 1,errors='ignore',inplace=True)
+            #print(md.keys())
             # print(md[['name','type','length']])
             # print(md.name[1])
+            #md.columns = md.columns.str.upper()
             md.type.replace(
                 {"anytype": "variant", "base64": "binary", "currency": "number",
                  "datacategorygroupreference": "varchar",
-                 "datetime": "timestamp_ntz", "email": "varchar", "id": "varchar", "int": "number",
+                 "datetime": "string", "email": "varchar", "id": "varchar", "int": "number",
                  "multipicklist": "variant",
                  "percent": "number", "picklist": "variant", "reference": "varchar", "textarea": "string",
                  "url": "varchar", "complexvalue": "varchar", "address": "variant","phone":"number"}, inplace=True)
             var_col= list(md['name'][md.type == "variant"])
+            var_col= [x.upper() for x in var_col]
             fieldDatatype = ""
             fieldNames = ""
             for i, row in md.iterrows():
                 fieldDatatype = fieldDatatype + """{columns},\n""".format(
                     columns=str(row['name']) + ' ' + str(row.type) + '(' + str(row.length) + ')')
-                if str(row.type) == 'boolean' or str(row.type) == 'variant' or str(row.type)=='date' or str(row.type)=='number' or str(row.type) == 'double':
+                if str(row.type) == 'boolean' or str(row.type) == 'variant' or str(row.type)=='date' or str(row.type)=='number' or str(row.type) == 'double' or str(row.type) == 'string':
                     fieldDatatype = fieldDatatype.replace('(' + str(row.length) + '),\n', ',\n')
                 fieldNames = fieldNames + """{columns} """.format(columns=str(row['name']) + ',')
             snow_ddls = snow_ddls + "\nCREATE OR REPLACE TABLE {tableName} (".format(
@@ -79,15 +83,16 @@ class SalesforceSrc:
             response = self.sf.query_all(soqls)
             lstrecrds = response.get('records')
             df_records = pd.DataFrame(lstrecrds)
+            df_records.columns = df_records.columns.str.upper()
             print(df_records.keys())
-            # df_records.drop('attributes',inplace=True,axis = 1)
+            df_records.drop('ATTRIBUTES',inplace=True,axis = 1,errors='ignore')
             if df_records.empty == False:
                 for var_col  in var_col:
                     # print(var_col)
                     df_records[var_col] = df_records[var_col].apply(json.dumps).apply(json.loads)
-            dirPath = "C:\\Users\\a833122\\PycharmProjects\\DataIngestion\\"
+            dirPath = "C:\\Users\\a833122\\PycharmProjects\\DataIngestion\\SalesforceExtract\\"
             Path(dirPath + each).mkdir(parents=True, exist_ok=True)
-            df_file = df_records.to_csv(dirPath + each + "\\" + each + ".csv")
+            df_records.to_csv(dirPath + each + "\\" + each + ".csv",index=False)
 
             with open("salesforce_DDL_new.sql", "w+", encoding="utf-8") as f:
                 f.write(snow_ddls)
